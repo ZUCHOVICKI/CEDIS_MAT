@@ -1,8 +1,10 @@
 
+
 import openpyxl
 from pathlib import Path
 from datetime import datetime
 from openpyxl.styles import Color, PatternFill, Font, Border
+from OpenOrders import *
 
 ##CENTRAL FILE WHERE OPERATIONS AND DATA IS STORED
 xlsx_file = Path('.', 'CEDIS_MAT.xlsx')
@@ -51,7 +53,7 @@ def ADDORDER(Data,Date):
     finishedOrders[Date] = dataDict
     
 ##GETS ALL THE INVENTAROY COMPONETS AND THE NUMBER ONHAND FROM A SPECIFIC EXCEL PAGE
-##**TODO ADD THE OPTION OF FILTERING INVENTORY ACCORDING TO LOCATION ON ENTERPRISE
+##**TODO AGREGAR 
 def GetInventario():
     inventario = {}
 
@@ -78,6 +80,32 @@ def GetInventario():
     ##GETINVENTARIO LOADS THE AVAILABLE MATERIALS ON GLOBAL VARIABLE inventario
     return inventario
 
+def GetInventarioFull():
+    inventarioFull = {}
+
+    onHandFull = wb_obj["ON-HAND-Full"]
+    HojasInventario =[onHandFull]
+
+
+
+    for sheet in HojasInventario:
+        
+        for row in sheet.iter_rows(max_row=sheet.max_row):
+                
+                if row[0].value == None:
+                    continue
+                if row[1].value == None:
+                    continue
+
+                if row[0].value in inventarioFull:
+                    
+                    inventarioFull[row[0].value] += (row[1].value)
+
+                else:
+                    inventarioFull[row[0].value] = (row[1].value)
+    ##GETINVENTARIO LOADS THE AVAILABLE MATERIALS ON GLOBAL VARIABLE inventario
+    return inventarioFull
+
 
 ## CHECKS FOR THE TOTAL NUMBER OF MATERIALS AFTER THE ORDER HAS BEEN FINALIZED ( Orders = finished orders and date
 #  Inventary = inventory details order = dates ordered from closest to furthest)
@@ -89,20 +117,23 @@ def CheckAvailable(Orders,Inventary,order):
        Actualdate =date
        
        data =  Orders[date]
-       
+      
       
        for product in data:
-           
+           productData = product
+           if product == 301303:
+                product = str(product)
            if product not in Inventary:
-               
+              
                if product not in warningsProduct:
                 
-                warningsProduct[product]= 0 - data[product]
+                warningsProduct[product]= 0 - data[productData]
                else:
-                warningsProduct[product] -= (data[product])
+                warningsProduct[product] -= (data[productData])
                continue
            
-           Inventary[product] -= data[product]
+           Inventary[product] -= data[productData]
+        #    inventarioFull[product] -= data[product]
            
            
            
@@ -111,7 +142,7 @@ def CheckAvailable(Orders,Inventary,order):
                
                if product not in warningsProduct:
                 
-                warningsProduct[product] = (Inventary[product] - data[product])
+                warningsProduct[product] = (Inventary[product] )
 
             
            
@@ -146,7 +177,8 @@ def getAllBills():
 
     ##Function for ordering dates after the creatión of an order      
 def OrderDate(date):
-    dateOrder.append(date)
+    if date not in dateOrder:
+     dateOrder.append(date)
     str(date)
     dateOrder.sort(key=lambda date: datetime.strptime(date, "%d/%m/%Y"))
     # print(finishedOrders)
@@ -163,12 +195,14 @@ def AgregarIndividual(Item,Date,Amount):
     
 
 ##Final function that generates an Excel file using the Availability of the materials
-def GenerarReporte(Warnings,FirstDate,Orders,DateOrder,inventario):
+def GenerarReporte(Warnings,FirstDate,Orders,DateOrder,inventario,HR=0):
     
     items =  ItemMaster()
     today = datetime.today().strftime('%Y-%m-%d')
     wb_obj.create_sheet(title="Reporte")
+    wb_obj.create_sheet(title="ReporteManufactura")
     sheet = wb_obj["Reporte"]
+    sheetManufactura = wb_obj["ReporteManufactura"]
 
     redFill = PatternFill(start_color='FFFF0000',
                    end_color='FFFF0000',
@@ -176,16 +210,24 @@ def GenerarReporte(Warnings,FirstDate,Orders,DateOrder,inventario):
     greenfill = PatternFill(start_color='00FF00',
                    end_color='00FF00',
                    fill_type='solid')
+    openOrders = GetOpenOrders()
+
 
     for s in wb_obj.worksheets:
 
-        if s.title != 'Reporte':
+        
+        if s.title != 'Reporte' and s.title != 'ReporteManufactura':
+            # print(s.title)
             sheet_name = wb_obj[s.title]
             wb_obj.remove_sheet(sheet_name)
 
-    
+    ##REPORTE DE P
     sheet.cell(column=1, row=1, value="Fecha de Generación de Reporte")
     sheet.cell(column=2, row=1, value=today)
+
+    ##REPORTE DE M
+    sheetManufactura.cell(column=1, row=1, value="Fecha de Generación de Reporte")
+    sheetManufactura.cell(column=2, row=1, value=today)
 
 
     sheet.cell(column=10, row=1, value="Fecha Maxima de Materiales")
@@ -201,7 +243,13 @@ def GenerarReporte(Warnings,FirstDate,Orders,DateOrder,inventario):
         sheet.cell(column=1, row=currentRow, value="Material")
         sheet.cell(column=2, row=currentRow, value="# Necesitado")        
         sheet.cell(column=3, row=currentRow, value="Total")
-        sheet.cell(column=4, row=currentRow, value="Status")
+        sheet.cell(column=4, row=currentRow, value="Inventario Total")
+        sheet.cell(column=5, row=currentRow, value="OpenOrder")
+        sheet.cell(column=6, row=currentRow, value="Status")
+
+        ##OPEN ORDER + INVENTARIO ACTUAL 
+        ##TRANSITO
+
         currentRow+=1
         for item in Orders[Date]:
             itemStr = str(item)
@@ -225,14 +273,65 @@ def GenerarReporte(Warnings,FirstDate,Orders,DateOrder,inventario):
             if item in Warnings[Date]:
                 sheet.cell(column=3, row=currentRow, value=Warnings[Date][item])
                 
-                sheet.cell(column=4, row=currentRow).fill=redFill
+                sheet.cell(column=6, row=currentRow).fill=redFill
             else:
-                sheet.cell(column=3, row=currentRow, value=inventario[item])
-                sheet.cell(column=4, row=currentRow).fill=greenfill
+                sheet.cell(column=3, row=currentRow, value=inventario[itemStr])
+                sheet.cell(column=6, row=currentRow).fill=greenfill
+
+            item = str(item)
+            try:
+                sheet.cell(column=4, row=currentRow, value=inventarioFull[item])
+            except:
+                sheet.cell(column=4, row=currentRow, value=0)
             currentRow+=1
 
+
+            if item in openOrders:
+                sheet.cell(column=5, row=currentRow, value=openOrders[item])
+
+    currentRow = 3    
+    for Date in DateOrder:
+
+        sheetManufactura.cell(column=1, row=currentRow, value="Orden")
+        sheetManufactura.cell(column=2, row=currentRow, value=Date)
+        currentRow+=1
+        sheetManufactura.cell(column=1, row=currentRow, value="Material")
+        sheetManufactura.cell(column=2, row=currentRow, value="# Necesitado")        
+
+
+    
+
+    ##OPEN ORDER + INVENTARIO ACTUAL 
+    ##TRANSITO
+
+        currentRow+=1
+        for item in Orders[Date]:
+            itemStr = str(item)
+           
+
+            
+            try:
+                if items[itemStr] == "P":
+                    # print("Manufactura")
+                    continue
+                
+            except:
+                
+                
+                print("Not In Item Master")
+
+            
+            sheetManufactura.cell(column=1, row=currentRow, value=item)
+            sheetManufactura.cell(column=2, row=currentRow, value=Orders[Date][item])
+           
+            currentRow+=1
 # report is saved with the keyword "Reporte" + the date it was generated
-    wb_obj.save('Reporte'+today+'.xlsx')
+
+
+    if HR == 0:
+     wb_obj.save('./Reportes/Reporte--'+today+'.xlsx')
+    else:
+     wb_obj.save('./Reportes/HighRunners--'+today+'.xlsx')
 
 ##Loads a Central DB where information about all materials is stored
 def ItemMaster():
@@ -266,6 +365,57 @@ def GetIndividualComponents(Item):
 MATBills = getAllBills()
 
 
+def DeleteALL():
+    finishedOrders.clear() ##Orders that have been submitted
+    dateOrder.clear() # Orders submitted but in chronological order
+    dateWarnings.clear() # Orders that have one or more materials close or under 0 available units
+    ActualOrder.clear() #Private Variable used in functions for temporary storage of order info
+    dataDict.clear()
+
+
+def DeleteOne(Date):
+    finishedOrders.pop(Date,None)##Orders that have been submitted
+
+    try:
+        dateOrder.remove(Date)
+    except:
+        print("***ERROR NOT IN DATE ARRAY SYSTEM***")
+    dateWarnings.pop(Date,None) # Orders that have one or more materials close or under 0 available units
+    ActualOrder.pop(Date,None) #Private Variable used in functions for temporary storage of order info
+    dataDict.pop(Date,None) 
+
+
+def GetHighRunners():
+
+    FinalRunners = {}
+    content = {}
+    contentMGR = []
+    TitleMGR = []
+    RunnerTitle = ""
+    HighRun = wb_obj["HighRunner"]
+
+    for row in HighRun.iter_rows(max_row=HighRun.max_row):
+        if row[0].value == "Level":
+            continue
+        if row[0].value == "Parent":
+            
+            RunnerTitle = row[1].value
+            
+            content.clear()
+            continue
+
+        content[row[1].value] = row[3].value
+        FinalRunners[RunnerTitle] = content.copy() 
+     
+   
+    return FinalRunners
+
+
+
+
+
+
+
 ## Global variables that can be read from all the aplication 
 finishedOrders = {} ##Orders that have been submitted
 dateOrder = [] # Orders submitted but in chronological order
@@ -273,5 +423,9 @@ dateWarnings = {} # Orders that have one or more materials close or under 0 avai
 ActualOrder = {} #Private Variable used in functions for temporary storage of order info
 dataDict = {} #Private Variable used in functions for temporary storage of componets info
 inventario = GetInventario() # Current inventory loaded on separate file
+
+inventarioFull = GetInventarioFull()#All inventory loaded on separate file
+
+Runners = GetHighRunners() ## HIGH RUNNERS / IMportant structures
 
 

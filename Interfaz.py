@@ -10,6 +10,7 @@
 
 
 import json
+from datetime import date
 from PyQt5 import QtCore, QtGui, QtWidgets
 from Cedis_MAT import *
 
@@ -19,6 +20,8 @@ TextBoxAdd = {}
 TextBoxInd = {}
 TextBoxAll = {}
 AllOptions = []
+
+FechasAvailable = []
 def AddOptionsBox():
         Bills = getAllBills()
         for item in Bills:
@@ -104,8 +107,25 @@ class Ui_MainWindow(object):
         self.Borrar.setGeometry(QtCore.QRect(414, 202, 150, 21))
         self.Borrar.setObjectName("Borrar")
         self.Borrar.clicked.connect(self.BorrarAll)
-        
+        self.HighRunnerButton = QtWidgets.QPushButton(self.Visualizar)
+        self.HighRunnerButton.setGeometry(QtCore.QRect(414, 282, 150, 21))
+        self.HighRunnerButton.setObjectName("HighRunner")
+        self.HighRunnerButton.clicked.connect(self.HighRunner)
+
         self.tabWidget.addTab(self.Visualizar, "")
+        self.EliminarIndividual = QtWidgets.QWidget()
+        self.EliminarIndividual.setObjectName("EliminarIndividual")
+        self.EliminarIndividualBoton = QtWidgets.QPushButton(self.EliminarIndividual)
+        self.EliminarIndividualBoton.setGeometry(QtCore.QRect(290, 170, 75, 23))
+        self.EliminarIndividualBoton.setObjectName("EliminarIndividualBoton")
+        self.EliminarIndividualBoton.clicked.connect(self.BorrarIndv)
+        self.FechasEliminar = QtWidgets.QComboBox(self.EliminarIndividual)
+        self.FechasEliminar.setGeometry(QtCore.QRect(130, 130, 161, 22))
+        self.FechasEliminar.setObjectName("FechasEliminar")
+        self.FechasEliminar.setEditable(True)
+        # self.OptionElementos.addItems("Fechas")
+        
+        self.tabWidget.addTab(self.EliminarIndividual, "")
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 588, 22))
@@ -136,7 +156,9 @@ class Ui_MainWindow(object):
         self.GenerarOrden.setText(_translate("MainWindow", "Generar Reporte"))
         self.Borrar.setText(_translate("MainWindow", "Borrar"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.Visualizar), _translate("MainWindow", "Visualizar"))
-
+        self.EliminarIndividualBoton.setText(_translate("MainWindow", "Eliminar"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.EliminarIndividual), _translate("MainWindow", "Eliminar Individual"))
+        self.HighRunnerButton.setText(_translate("MainWindow", "High Runners"))
 
 
     def BuscarIndv(self):
@@ -161,11 +183,19 @@ class Ui_MainWindow(object):
         self.ElementosCompletos.clear()
         self.ElementosIndividuales.clear()
         self.textBrowser_3.clear()
-        print(finishedOrders)
+        # print(finishedOrders)
        
         self.ElementosCompletos.append(json.dumps(finishedOrders))
         self.ElementosIndividuales.append(json.dumps(finishedOrders))
         self.textBrowser_3.append(json.dumps(finishedOrders))
+
+
+        
+        if Fecha not in FechasAvailable:
+            self.FechasEliminar.addItem(Fecha)
+            FechasAvailable.append(Fecha)
+            
+        
 
     
     def IndividualGen(self):
@@ -180,7 +210,7 @@ class Ui_MainWindow(object):
         self.ElementosCompletos.clear()
         self.ElementosIndividuales.clear()
         self.textBrowser_3.clear()
-        print(finishedOrders)
+        # print(finishedOrders)
        
         self.ElementosCompletos.append(json.dumps(finishedOrders))
         self.ElementosIndividuales.append(json.dumps(finishedOrders))
@@ -190,13 +220,14 @@ class Ui_MainWindow(object):
     def CrearOrden(self):
 
         ordenesFinales = CheckAvailable(finishedOrders,inventario,dateOrder)
-        print(ordenesFinales)
-        print(dateOrder)
+        # print(ordenesFinales)
+        # print(dateOrder)
         firstWarning = list(ordenesFinales)[0]
         GenerarReporte(ordenesFinales,firstWarning,finishedOrders,dateOrder,inventario)
+        sys.exit()
         
     def BorrarAll(self):
-        finishedOrders ={}
+        DeleteALL()
         self.ElementosCompletos.clear()
         self.ElementosIndividuales.clear()
         self.textBrowser_3.clear()
@@ -205,6 +236,46 @@ class Ui_MainWindow(object):
         self.ElementosCompletos.append(json.dumps(finishedOrders))
         self.ElementosIndividuales.append(json.dumps(finishedOrders))
         self.textBrowser_3.append(json.dumps(finishedOrders))
+
+
+
+    def BorrarIndv(self):
+
+        FechaBorrar = self.FechasEliminar.currentText()
+        DeleteOne(FechaBorrar)
+        count =0 
+        for i in FechasAvailable:
+            if i == FechaBorrar:
+
+                self.FechasEliminar.removeItem(count)
+                FechasAvailable.pop(count)
+            count+=1
+
+        self.ElementosCompletos.clear()
+        self.ElementosIndividuales.clear()
+        self.textBrowser_3.clear()
+        self.ElementosCompletos.append(json.dumps(finishedOrders))
+        self.ElementosIndividuales.append(json.dumps(finishedOrders))
+        self.textBrowser_3.append(json.dumps(finishedOrders))
+
+    def HighRunner(self):
+        amount = 150
+     
+        for x in Runners:
+           
+            print(x)
+            ADDORDER({x:amount},self.FechaElemento.text())
+            
+        OrderDate(self.FechaElemento.text())
+        
+        ordenFinal =  CheckAvailable(finishedOrders,inventario,dateOrder)
+        firstWarning = list(ordenFinal)[0]
+        GenerarReporte(ordenFinal,firstWarning,finishedOrders,dateOrder,inventario,1)
+        sys.exit()
+        
+        
+
+        
 if __name__ == "__main__":
     AddOptionsBox()
     import sys
