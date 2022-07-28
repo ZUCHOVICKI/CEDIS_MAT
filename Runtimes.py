@@ -178,23 +178,25 @@ for i in range(0,Folderlenght):
         reporte.cell(column=2, row=row, value=x)
         row+=1
         reporte.cell(column=1, row=row, value="Número de Parte")
-        reporte.cell(column=2, row=row, value="Horas de Manufactura Interna")
-        reporte.cell(column=3, row=row, value="FHO")
-        reporte.cell(column=4, row=row, value="9GURUEM")
+        reporte.cell(column=2, row=row, value="Cantidad de Numeros de Parte")
+        reporte.cell(column=3, row=row, value="Horas de Manufactura Interna")
+        reporte.cell(column=4, row=row, value="FHO")
+        reporte.cell(column=5, row=row, value="9GURUEM")
         row+=1
         for y in orders[x]:
             try:
                 reporte.cell(column=1, row=row, value=y)
-                reporte.cell(column=2, row=row, value=(orders[x][y])*RunTimesMat[y])
+                reporte.cell(column=2, row=row, value=orders[x][y])
+                reporte.cell(column=3, row=row, value=(orders[x][y])*RunTimesMat[y])
                 HoursCount["Plant"] -= orders[x][y]*RunTimesMat[y]
 
                 
-                reporte.cell(column=10, row=row, value= HoursCount["Plant"])
+                reporte.cell(column=11, row=row, value= HoursCount["Plant"])
                 
                 if HoursCount["Plant"] <0:
-                    reporte.cell(column=11, row=row).fill = redFill
+                    reporte.cell(column=12, row=row).fill = redFill
                 else:
-                    reporte.cell(column=11, row=row).fill = greenfill
+                    reporte.cell(column=12, row=row).fill = greenfill
                 row+=1
                 
             except:
@@ -202,14 +204,14 @@ for i in range(0,Folderlenght):
                 if RunTimeExternal[y] =="PROVEDOR EXTERNO FHO":
                    
                     
-                        reporte.cell(column=3, row=row, value="X")
+                        reporte.cell(column=4, row=row, value="X")
                         if orders[x][y] >= 15:
                             countFHO += 1 
 
                 if RunTimeExternal[y] =="PROVEDOR EXTERNO 9GURUEM":
                     
                     
-                        reporte.cell(column=4, row=row, value="X")
+                        reporte.cell(column=5, row=row, value="X")
                         if orders[x][y] >= 15:
                             count9GURUEM += 1 
 
@@ -229,9 +231,9 @@ for i in range(0,Folderlenght):
         
         reporte.cell(column=12, row=row, value= HoursCount["OffPlant"])
         if HoursCount["OffPlant"]<0 :
-                reporte.cell(column=12, row=row).fill = redFill
+                reporte.cell(column=13, row=row).fill = redFill
         else:
-            reporte.cell(column=12, row=row).fill = greenfill
+            reporte.cell(column=13, row=row).fill = greenfill
             
     wb_obj.save('./Manufactura/ReporteManufactura--'+finalFile+'.xlsx')
 
